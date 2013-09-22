@@ -6,6 +6,7 @@ import sys
 
 from hashlib import sha512
 import hmac
+import binascii
 import base64
 
 import urllib.request
@@ -40,9 +41,14 @@ class BitBoxRest:
 		url = urljoin(url, "?nonce=%d" % nonce)
 		request = self.get_unsigned_request(url)
 		urldata = urlencode({"nonce" : nonce})
-		hmac_obj = hmac.new(base64.b64decode(secret), bytes(urldata.encode("utf-8")), sha512)
-		request.add_header('Rest-Key', key)
-		request.add_header('Rest-Sign', base64.b64encode(hmac_obj.digest()))
+		try:
+			decoded_secret = base64.b64decode(secret)
+			hmac_obj = hmac.new(decoded_secret, bytes(urldata.encode("utf-8")), sha512)
+			request.add_header('Rest-Key', key)
+			request.add_header('Rest-Sign', base64.b64encode(hmac_obj.digest()))
+		except binascii.Error as e:
+			print("errror decoding secret: %s" % str(e))
+			sys.exit(1)
 		return request
 
 	def do_request(self, request):
@@ -114,8 +120,8 @@ if __name__ == '__main__':
 		sys.exit(1)
 	args = parser.parse_args()
 
-	secret = "secret"
 	key = "key"
+	secret = "secret12"
 	
 	bbr = BitBoxRest(key, secret)
 
